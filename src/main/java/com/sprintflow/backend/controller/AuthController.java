@@ -1,5 +1,7 @@
 package com.sprintflow.backend.controller;
 
+import com.sprintflow.backend.dto.auth.AuthResponse;
+import com.sprintflow.backend.dto.auth.LoginRequest;
 import com.sprintflow.backend.dto.auth.RegisterRequest;
 import com.sprintflow.backend.service.AuthService;
 import jakarta.validation.Valid;
@@ -21,5 +23,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public void register(@Valid @RequestBody RegisterRequest request){
         authService.register(request);
+    }
+
+    @PostMapping("/login")
+    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+        return authService.login(request);
     }
 }
