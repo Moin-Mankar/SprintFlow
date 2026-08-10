@@ -20,4 +20,6 @@ public interface WorkspaceMemberRepository
     );
 
     void deleteByWorkspace(Workspace workspace);
+
+
 }

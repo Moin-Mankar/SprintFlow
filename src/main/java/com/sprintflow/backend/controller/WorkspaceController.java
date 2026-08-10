@@ -1,8 +1,7 @@
 package com.sprintflow.backend.controller;
 
-import com.sprintflow.backend.dto.workspace.CreateWorkspaceRequest;
-import com.sprintflow.backend.dto.workspace.UpdateWorkspaceRequest;
-import com.sprintflow.backend.dto.workspace.WorkspaceResponse;
+import com.sprintflow.backend.dto.workspace.*;
+import com.sprintflow.backend.entity.Invitation;
 import com.sprintflow.backend.entity.Workspace;
 import com.sprintflow.backend.service.WorkspaceService;
 import jakarta.validation.Valid;
@@ -68,6 +67,20 @@ public class WorkspaceController {
 
         workspaceService.deleteWorkspace(
                 workspaceId,
+                authentication
+        );
+    }
+
+    @PostMapping("/{workspaceId}/invitations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InvitationResponse createInvitation(
+            @PathVariable UUID workspaceId,
+            @Valid @RequestBody CreateInvitationRequest request,
+            Authentication authentication) {
+
+        return workspaceService.createInvitation(
+                workspaceId,
+                request,
                 authentication
         );
     }
