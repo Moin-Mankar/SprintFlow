@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface InvitationRepository extends JpaRepository<Invitation, UUID> {
     Optional<Invitation> findByToken(String token);
+
+
 }

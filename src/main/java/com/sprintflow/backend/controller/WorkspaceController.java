@@ -4,6 +4,7 @@ import com.sprintflow.backend.dto.workspace.*;
 import com.sprintflow.backend.entity.Invitation;
 import com.sprintflow.backend.entity.Workspace;
 import com.sprintflow.backend.service.WorkspaceService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -13,6 +14,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/workspaces")
+@SecurityRequirement(name = "bearerAuth")
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
