@@ -31,3 +31,17 @@ build/
 
 ### VS Code ###
 .vscode/
+
+firebase-service-account.json
+
+# Firebase
+firebase-service-account.json
+
+# Environment / secrets
+.env
+*.env
+
+# Spring secrets
+application-local.properties
+
+*.log

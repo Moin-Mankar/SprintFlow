@@ -5,6 +5,7 @@ import com.sprintflow.backend.dto.comment.CreateCommentRequest;
 import com.sprintflow.backend.entity.Comment;
 import com.sprintflow.backend.entity.Task;
 import com.sprintflow.backend.entity.User;
+import com.sprintflow.backend.enums.TaskActivityType;
 import com.sprintflow.backend.repository.CommentRepository;
 import com.sprintflow.backend.repository.ProjectMemberRepository;
 import com.sprintflow.backend.repository.TaskRepository;
@@ -12,6 +13,8 @@ import com.sprintflow.backend.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sprintflow.backend.dto.websocket.ProjectEvent;
+import com.sprintflow.backend.service.websocket.WebSocketEventService;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,17 +26,21 @@ public class CommentService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final TaskActivityService taskActivityService;
+    private final WebSocketEventService webSocketEventService;
 
     public CommentService(
             CommentRepository commentRepository,
             TaskRepository taskRepository,
             UserRepository userRepository,
-            ProjectMemberRepository projectMemberRepository) {
+            ProjectMemberRepository projectMemberRepository, TaskActivityService taskActivityService, WebSocketEventService webSocketEventService) {
 
         this.commentRepository = commentRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.taskActivityService = taskActivityService;
+        this.webSocketEventService = webSocketEventService;
     }
 
     @Transactional
@@ -67,6 +74,27 @@ public class CommentService {
         comment.setUser(user);
 
         Comment savedComment = commentRepository.save(comment);
+
+        taskActivityService.recordActivity(
+                user,
+                task,
+                TaskActivityType.COMMENT_ADDED,
+                "Added a comment"
+        );
+
+        ProjectEvent event = new ProjectEvent();
+
+        event.setType("COMMENT_ADDED");
+        event.setProjectId(task.getBoard().getProject().getId());
+        event.setTaskId(task.getId());
+        event.setMessage(
+                user.getName() + " added a comment"
+        );
+
+        webSocketEventService.sendProjectEvent(
+                task.getBoard().getProject().getId(),
+                event
+        );
 
         return toResponse(savedComment);
     }

@@ -12,6 +12,7 @@ import com.sprintflow.backend.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sprintflow.backend.service.caching.ProjectBoardsCacheService;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,17 +24,19 @@ public class BoardService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
+    private final ProjectBoardsCacheService projectBoardsCacheService;
 
     public BoardService(
             BoardRepository boardRepository,
             ProjectRepository projectRepository,
             ProjectMemberRepository projectMemberRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, ProjectBoardsCacheService projectBoardsCacheService) {
 
         this.boardRepository = boardRepository;
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
+        this.projectBoardsCacheService = projectBoardsCacheService;
     }
 
     @Transactional
@@ -64,6 +67,10 @@ public class BoardService {
 
         Board savedBoard = boardRepository.save(board);
 
+        projectBoardsCacheService.evictProjectBoards(
+                projectId
+        );
+
         return toResponse(savedBoard);
     }
 
@@ -85,10 +92,10 @@ public class BoardService {
                         new RuntimeException(
                                 "You are not a member of this project"));
 
-        return boardRepository.findByProject(project)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return projectBoardsCacheService.getBoards(
+                projectId,
+                project
+        );
     }
 
     private BoardResponse toResponse(Board board) {

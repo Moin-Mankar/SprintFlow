@@ -3,6 +3,7 @@ package com.sprintflow.backend.controller;
 import com.sprintflow.backend.dto.auth.AuthResponse;
 import com.sprintflow.backend.dto.auth.LoginRequest;
 import com.sprintflow.backend.dto.auth.RegisterRequest;
+import com.sprintflow.backend.dto.auth.RegisterResponse;
 import com.sprintflow.backend.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -21,8 +22,10 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public void register(@Valid @RequestBody RegisterRequest request){
-        authService.register(request);
+    public RegisterResponse register(
+            @Valid @RequestBody RegisterRequest request) {
+
+        return authService.register(request);
     }
 
     @PostMapping("/login")

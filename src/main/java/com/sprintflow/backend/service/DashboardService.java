@@ -4,11 +4,7 @@ import com.sprintflow.backend.dto.dashboard.DashboardResponse;
 import com.sprintflow.backend.entity.User;
 import com.sprintflow.backend.entity.Workspace;
 import com.sprintflow.backend.enums.TaskStatus;
-import com.sprintflow.backend.repository.ProjectRepository;
-import com.sprintflow.backend.repository.TaskRepository;
-import com.sprintflow.backend.repository.UserRepository;
-import com.sprintflow.backend.repository.WorkspaceMemberRepository;
-import com.sprintflow.backend.repository.WorkspaceRepository;
+import com.sprintflow.backend.repository.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -23,19 +19,21 @@ public class DashboardService {
     private final ProjectRepository projectRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final TaskRelationshipRepository taskRelationshipRepository;
 
     public DashboardService(
             WorkspaceMemberRepository workspaceMemberRepository,
             WorkspaceRepository workspaceRepository,
             ProjectRepository projectRepository,
             TaskRepository taskRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, TaskRelationshipRepository taskRelationshipRepository) {
 
         this.workspaceMemberRepository = workspaceMemberRepository;
         this.workspaceRepository = workspaceRepository;
         this.projectRepository = projectRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.taskRelationshipRepository = taskRelationshipRepository;
     }
 
     public DashboardResponse getDashboard(

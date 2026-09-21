@@ -3,6 +3,7 @@ package com.sprintflow.backend.service;
 import com.sprintflow.backend.dto.auth.AuthResponse;
 import com.sprintflow.backend.dto.auth.LoginRequest;
 import com.sprintflow.backend.dto.auth.RegisterRequest;
+import com.sprintflow.backend.dto.auth.RegisterResponse;
 import com.sprintflow.backend.entity.User;
 import com.sprintflow.backend.repository.UserRepository;
 import com.sprintflow.backend.security.JwtService;
@@ -26,7 +27,7 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    public void register(RegisterRequest request){
+    public RegisterResponse register(RegisterRequest request){
 
         if(userRepository.findByEmail(request.getEmail()).isPresent()){
             throw new RuntimeException("Email already Registered");
@@ -38,10 +39,19 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        RegisterResponse response = new RegisterResponse();
+
+        response.setUserId(savedUser.getId());
+        response.setName(savedUser.getName());
+        response.setEmail(savedUser.getEmail());
+
+        return response;
     }
 
     public AuthResponse login (LoginRequest request){
+
+        System.out.println("🔥 LOGIN METHOD REACHED");
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(()->

@@ -28,6 +28,8 @@ public class User {
 
     private boolean enabled;
 
+    private String fcmToken;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

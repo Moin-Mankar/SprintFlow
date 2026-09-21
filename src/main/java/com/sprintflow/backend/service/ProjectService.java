@@ -13,6 +13,7 @@ import com.sprintflow.backend.repository.WorkspaceRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sprintflow.backend.service.caching.ProjectMembersCacheService;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,7 @@ public class ProjectService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final UserRepository userRepository;
+    private final ProjectMembersCacheService projectMembersCacheService;
 
 
     public ProjectService(
@@ -32,13 +34,14 @@ public class ProjectService {
             ProjectMemberRepository projectMemberRepository,
             WorkspaceRepository workspaceRepository,
             WorkspaceMemberRepository workspaceMemberRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, ProjectMembersCacheService projectMembersCacheService) {
 
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.workspaceRepository = workspaceRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
         this.userRepository = userRepository;
+        this.projectMembersCacheService = projectMembersCacheService;
     }
 
     @Transactional
@@ -330,6 +333,10 @@ public class ProjectService {
         projectMember.setProjectRole(request.getProjectRole());
 
         projectMemberRepository.save(projectMember);
+
+        projectMembersCacheService.evictProjectMembers(
+                projectId
+        );
     }
 
     public List<ProjectMemberResponse> getProjectMembers(
@@ -345,7 +352,6 @@ public class ProjectService {
                 .orElseThrow(() ->
                         new RuntimeException("User not found"));
 
-        // Make sure current user belongs to this project
         projectMemberRepository
                 .findByUserAndProject(currentUser, project)
                 .orElseThrow(() ->
@@ -353,22 +359,10 @@ public class ProjectService {
                                 "You are not a member of this project"
                         ));
 
-        return projectMemberRepository
-                .findByProject(project)
-                .stream()
-                .map(member -> {
-
-                    ProjectMemberResponse response =
-                            new ProjectMemberResponse();
-
-                    response.setUserId(member.getUser().getId());
-                    response.setName(member.getUser().getName());
-                    response.setEmail(member.getUser().getEmail());
-                    response.setProjectRole(member.getProjectRole());
-
-                    return response;
-                })
-                .toList();
+        return projectMembersCacheService.getProjectMembers(
+                projectId,
+                project
+        );
     }
 
     public ProjectMemberResponse updateProjectMemberRole(
@@ -416,6 +410,10 @@ public class ProjectService {
 
         ProjectMember savedMember =
                 projectMemberRepository.save(targetMember);
+
+        projectMembersCacheService.evictProjectMembers(
+                projectId
+        );
 
         ProjectMemberResponse response =
                 new ProjectMemberResponse();
@@ -476,5 +474,9 @@ public class ProjectService {
         }
 
         projectMemberRepository.delete(targetMember);
+
+        projectMembersCacheService.evictProjectMembers(
+                projectId
+        );
     }
 }
