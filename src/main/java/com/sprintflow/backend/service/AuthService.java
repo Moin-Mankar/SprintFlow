@@ -58,8 +58,6 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request){
 
-        System.out.println("🔥 LOGIN METHOD REACHED");
-
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
                         new BadRequestException(

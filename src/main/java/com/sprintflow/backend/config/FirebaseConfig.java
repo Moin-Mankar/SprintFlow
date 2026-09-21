@@ -25,7 +25,6 @@ public class FirebaseConfig {
 
             FirebaseApp.initializeApp(options);
 
-            System.out.println("Firebase initialized successfully");
         }catch (Exception e){
             throw new IllegalStateException(
                     "Failed to initialize Firebase",e
