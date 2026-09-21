@@ -15,6 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.sprintflow.backend.service.caching.ProjectMembersCacheService;
 
+import com.sprintflow.backend.exception.BadRequestException;
+import com.sprintflow.backend.exception.ConflictException;
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -34,7 +39,8 @@ public class ProjectService {
             ProjectMemberRepository projectMemberRepository,
             WorkspaceRepository workspaceRepository,
             WorkspaceMemberRepository workspaceMemberRepository,
-            UserRepository userRepository, ProjectMembersCacheService projectMembersCacheService) {
+            UserRepository userRepository,
+            ProjectMembersCacheService projectMembersCacheService) {
 
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
@@ -54,23 +60,25 @@ public class ProjectService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() ->
-                        new RuntimeException("Workspace not found"));
+                        new ResourceNotFoundException(
+                                "Workspace not found"));
 
         WorkspaceMember workspaceMember =
                 workspaceMemberRepository
                         .findByUserAndWorkspace(user, workspace)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ForbiddenException(
                                         "You are not a member of this workspace"));
 
         if (workspaceMember.getRole() != WorkspaceRole.OWNER &&
                 workspaceMember.getRole() != WorkspaceRole.ADMIN) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "Only owner or admin can create projects");
         }
 
@@ -113,16 +121,18 @@ public class ProjectService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() ->
-                        new RuntimeException("Workspace not found"));
+                        new ResourceNotFoundException(
+                                "Workspace not found"));
 
         workspaceMemberRepository
                 .findByUserAndWorkspace(user, workspace)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this workspace"));
 
         List<Project> projects =
@@ -155,16 +165,18 @@ public class ProjectService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         workspaceMemberRepository
                 .findByUserAndWorkspace(user, project.getWorkspace())
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this workspace"));
 
         ProjectResponse response = new ProjectResponse();
@@ -190,11 +202,13 @@ public class ProjectService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         Workspace workspace = project.getWorkspace();
 
@@ -202,13 +216,13 @@ public class ProjectService {
                 workspaceMemberRepository
                         .findByUserAndWorkspace(user, workspace)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ForbiddenException(
                                         "You are not a member of this workspace"));
 
         if (member.getRole() != WorkspaceRole.OWNER &&
                 member.getRole() != WorkspaceRole.ADMIN) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "Only owner or admin can update the project");
         }
 
@@ -243,11 +257,13 @@ public class ProjectService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         Workspace workspace = project.getWorkspace();
 
@@ -255,13 +271,13 @@ public class ProjectService {
                 workspaceMemberRepository
                         .findByUserAndWorkspace(user, workspace)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ForbiddenException(
                                         "You are not a member of this workspace"));
 
         if (member.getRole() != WorkspaceRole.OWNER &&
                 member.getRole() != WorkspaceRole.ADMIN) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "Only owner or admin can delete the project");
         }
 
@@ -280,11 +296,13 @@ public class ProjectService {
 
         User currentUser = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         Workspace workspace = project.getWorkspace();
 
@@ -293,27 +311,28 @@ public class ProjectService {
                 workspaceMemberRepository
                         .findByUserAndWorkspace(currentUser, workspace)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ForbiddenException(
                                         "You are not a member of this workspace"));
 
 
         if (currentMember.getRole() != WorkspaceRole.OWNER &&
                 currentMember.getRole() != WorkspaceRole.ADMIN) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "Only owner or admin can add project members");
         }
 
 
         User userToAdd = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException(
+                                "User not found"));
 
 
         workspaceMemberRepository
                 .findByUserAndWorkspace(userToAdd, workspace)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "User is not a member of this workspace"));
 
 
@@ -321,7 +340,7 @@ public class ProjectService {
                 .findByUserAndProject(userToAdd, project)
                 .isPresent()) {
 
-            throw new RuntimeException(
+            throw new ConflictException(
                     "User is already a member of this project");
         }
 
@@ -345,17 +364,19 @@ public class ProjectService {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         User currentUser = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException(
+                                "User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(currentUser, project)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"
                         ));
 
@@ -373,36 +394,39 @@ public class ProjectService {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         User currentUser = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException(
+                                "User not found"));
 
         ProjectMember currentMember =
                 projectMemberRepository
                         .findByUserAndProject(currentUser, project)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ForbiddenException(
                                         "You are not a member of this project"
                                 ));
 
         if (currentMember.getProjectRole() != ProjectRole.MANAGER) {
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "Only project managers can change roles"
             );
         }
 
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException(
+                                "User not found"));
 
         ProjectMember targetMember =
                 projectMemberRepository
                         .findByUserAndProject(targetUser, project)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "User is not a member of this project"
                                 ));
 
@@ -434,41 +458,44 @@ public class ProjectService {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+                        new ResourceNotFoundException(
+                                "Project not found"));
 
         User currentUser = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException(
+                                "User not found"));
 
         ProjectMember currentMember =
                 projectMemberRepository
                         .findByUserAndProject(currentUser, project)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ForbiddenException(
                                         "You are not a member of this project"
                                 ));
 
         if (currentMember.getProjectRole() != ProjectRole.MANAGER) {
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "Only project managers can remove members"
             );
         }
 
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException(
+                                "User not found"));
 
         ProjectMember targetMember =
                 projectMemberRepository
                         .findByUserAndProject(targetUser, project)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "User is not a member of this project"
                                 ));
 
         if (targetMember.getProjectRole() == ProjectRole.MANAGER) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Cannot remove a project manager"
             );
         }

@@ -15,10 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 import com.sprintflow.backend.entity.Invitation;
-import com.sprintflow.backend.repository.InvitationRepository;
 
 import java.time.LocalDateTime;
 
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 
 @Service
 public class WorkspaceService {
@@ -31,7 +32,8 @@ public class WorkspaceService {
     public WorkspaceService(
             WorkspaceRepository workspaceRepository,
             WorkspaceMemberRepository workspaceMemberRepository,
-            UserRepository userRepository, InvitationRepository invitationRepository) {
+            UserRepository userRepository,
+            InvitationRepository invitationRepository) {
 
         this.workspaceRepository = workspaceRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
@@ -48,7 +50,8 @@ public class WorkspaceService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Workspace workspace = new Workspace();
 
@@ -69,13 +72,15 @@ public class WorkspaceService {
         return savedWorkspace;
     }
 
-    public List<WorkspaceResponse> getMyWorkspaces(Authentication authentication) {
+    public List<WorkspaceResponse> getMyWorkspaces(
+            Authentication authentication) {
 
         String email = authentication.getName();
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         return workspaceMemberRepository.findByUser(user)
                 .stream()
@@ -105,16 +110,19 @@ public class WorkspaceService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() ->
-                        new RuntimeException("Workspace not found"));
+                        new ResourceNotFoundException(
+                                "Workspace not found"));
 
         workspaceMemberRepository
                 .findByUserAndWorkspace(user, workspace)
                 .orElseThrow(() ->
-                        new RuntimeException("You are not a member of this workspace"));
+                        new ForbiddenException(
+                                "You are not a member of this workspace"));
 
         WorkspaceResponse response = new WorkspaceResponse();
 
@@ -138,20 +146,25 @@ public class WorkspaceService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() ->
-                        new RuntimeException("Workspace not found"));
+                        new ResourceNotFoundException(
+                                "Workspace not found"));
 
         WorkspaceMember member = workspaceMemberRepository
                 .findByUserAndWorkspace(user, workspace)
                 .orElseThrow(() ->
-                        new RuntimeException("You are not a member of this workspace"));
+                        new ForbiddenException(
+                                "You are not a member of this workspace"));
 
         if (member.getRole() != WorkspaceRole.OWNER &&
                 member.getRole() != WorkspaceRole.ADMIN) {
-            throw new RuntimeException("You do not have permission to update this workspace");
+
+            throw new ForbiddenException(
+                    "You do not have permission to update this workspace");
         }
 
         workspace.setName(request.getName());
@@ -180,19 +193,22 @@ public class WorkspaceService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() ->
-                        new RuntimeException("Workspace not found"));
+                        new ResourceNotFoundException(
+                                "Workspace not found"));
 
         WorkspaceMember member = workspaceMemberRepository
                 .findByUserAndWorkspace(user, workspace)
                 .orElseThrow(() ->
-                        new RuntimeException("You are not a member of this workspace"));
+                        new ForbiddenException(
+                                "You are not a member of this workspace"));
 
         if (member.getRole() != WorkspaceRole.OWNER) {
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "Only the workspace owner can delete the workspace");
         }
 
@@ -211,21 +227,24 @@ public class WorkspaceService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException(
+                                "Authenticated user not found"));
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() ->
-                        new RuntimeException("Workspace not found"));
+                        new ResourceNotFoundException(
+                                "Workspace not found"));
 
         WorkspaceMember member = workspaceMemberRepository
                 .findByUserAndWorkspace(user, workspace)
                 .orElseThrow(() ->
-                        new RuntimeException("You are not a member of this workspace"));
+                        new ForbiddenException(
+                                "You are not a member of this workspace"));
 
         if (member.getRole() != WorkspaceRole.OWNER &&
                 member.getRole() != WorkspaceRole.ADMIN) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "Only owner or admin can invite users");
         }
 

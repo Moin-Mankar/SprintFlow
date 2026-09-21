@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
@@ -20,7 +21,7 @@ public class UserController {
     }
 
     @PutMapping("/fcm-token")
-    public void setFcmToken(@RequestBody FcmTokenRequestDto request , Authentication authentication){
+    public void setFcmToken(@Valid @RequestBody FcmTokenRequestDto request , Authentication authentication){
         userService.updateFcmToken(authentication.getName(), request.getFcmToken());
     }
 }

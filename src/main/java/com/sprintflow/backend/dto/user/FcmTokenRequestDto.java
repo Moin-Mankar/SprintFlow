@@ -1,5 +1,6 @@
 package com.sprintflow.backend.dto.user;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -7,5 +8,6 @@ import lombok.Setter;
 @Setter
 public class FcmTokenRequestDto {
 
+    @NotBlank
     private String fcmToken;
 }

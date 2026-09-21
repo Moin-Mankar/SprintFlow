@@ -13,6 +13,9 @@ import com.sprintflow.backend.repository.*;
 import com.sprintflow.backend.service.caching.ProjectDashboardCacheService;
 import com.sprintflow.backend.specification.TaskSpecification;
 import com.sprintflow.backend.service.websocket.WebSocketEventService;
+import com.sprintflow.backend.exception.BadRequestException;
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,7 +45,12 @@ public class TaskService {
             TaskRepository taskRepository,
             BoardRepository boardRepository,
             UserRepository userRepository,
-            ProjectMemberRepository projectMemberRepository, NotificationService notificationService, TaskActivityService taskActivityService, TaskRelationshipRepository taskRelationshipRepository, ProjectDashboardCacheService projectDashboardCacheService, WebSocketEventService webSocketEventService) {
+            ProjectMemberRepository projectMemberRepository,
+            NotificationService notificationService,
+            TaskActivityService taskActivityService,
+            TaskRelationshipRepository taskRelationshipRepository,
+            ProjectDashboardCacheService projectDashboardCacheService,
+            WebSocketEventService webSocketEventService) {
 
         this.taskRepository = taskRepository;
         this.boardRepository = boardRepository;
@@ -50,7 +58,6 @@ public class TaskService {
         this.projectMemberRepository = projectMemberRepository;
         this.notificationService = notificationService;
         this.taskActivityService = taskActivityService;
-
         this.taskRelationshipRepository = taskRelationshipRepository;
         this.projectDashboardCacheService = projectDashboardCacheService;
         this.webSocketEventService = webSocketEventService;
@@ -64,13 +71,12 @@ public class TaskService {
 
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() ->
-                        new RuntimeException("Board not found"));
+                        new ResourceNotFoundException("Board not found"));
 
         User currentUser = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
-
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -78,7 +84,7 @@ public class TaskService {
                         board.getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         Task task = new Task();
@@ -94,8 +100,7 @@ public class TaskService {
             User assignee = userRepository
                     .findById(request.getAssigneeId())
                     .orElseThrow(() ->
-                            new RuntimeException("Assignee not found"));
-
+                            new ResourceNotFoundException("Assignee not found"));
 
             projectMemberRepository
                     .findByUserAndProject(
@@ -103,7 +108,7 @@ public class TaskService {
                             board.getProject()
                     )
                     .orElseThrow(() ->
-                            new RuntimeException(
+                            new ForbiddenException(
                                     "Assignee is not a member of this project"));
 
             task.setAssignee(assignee);
@@ -111,9 +116,12 @@ public class TaskService {
 
         Task savedTask = taskRepository.save(task);
 
-        taskActivityService.recordActivity(currentUser,savedTask,
+        taskActivityService.recordActivity(
+                currentUser,
+                savedTask,
                 TaskActivityType.CREATED,
-                "Created the task: " + savedTask.getTitle());
+                "Created the task: " + savedTask.getTitle()
+        );
 
         projectDashboardCacheService.evictDashboard(
                 board.getProject().getId()
@@ -168,17 +176,20 @@ public class TaskService {
 
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() ->
-                        new RuntimeException("Board not found"));
+                        new ResourceNotFoundException("Board not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
-                .findByUserAndProject(user, board.getProject())
+                .findByUserAndProject(
+                        user,
+                        board.getProject()
+                )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         return taskRepository.findByBoard(board)
@@ -193,12 +204,12 @@ public class TaskService {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                        new ResourceNotFoundException("Task not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -206,7 +217,7 @@ public class TaskService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         return toResponse(task);
@@ -220,7 +231,7 @@ public class TaskService {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                        new ResourceNotFoundException("Task not found"));
 
         TaskPriority oldPriority = task.getTaskPriority();
         TaskStatus oldStatus = task.getTaskStatus();
@@ -233,7 +244,7 @@ public class TaskService {
         User currentUser = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -241,7 +252,7 @@ public class TaskService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         task.setTitle(request.getTitle());
@@ -255,7 +266,7 @@ public class TaskService {
             User assignee = userRepository
                     .findById(request.getAssigneeId())
                     .orElseThrow(() ->
-                            new RuntimeException("Assignee not found"));
+                            new ResourceNotFoundException("Assignee not found"));
 
             projectMemberRepository
                     .findByUserAndProject(
@@ -263,7 +274,7 @@ public class TaskService {
                             task.getBoard().getProject()
                     )
                     .orElseThrow(() ->
-                            new RuntimeException(
+                            new ForbiddenException(
                                     "Assignee is not a member of this project"));
 
             task.setAssignee(assignee);
@@ -385,12 +396,12 @@ public class TaskService {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                        new ResourceNotFoundException("Task not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -398,10 +409,13 @@ public class TaskService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
+
         UUID projectId = task.getBoard().getProject().getId();
+
         taskRepository.delete(task);
+
         projectDashboardCacheService.evictDashboard(projectId);
     }
 
@@ -413,12 +427,12 @@ public class TaskService {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                        new ResourceNotFoundException("Task not found"));
 
         User currentUser = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -426,13 +440,13 @@ public class TaskService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         User assignee = userRepository
                 .findById(request.getAssigneeId())
                 .orElseThrow(() ->
-                        new RuntimeException("Assignee not found"));
+                        new ResourceNotFoundException("Assignee not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -440,16 +454,19 @@ public class TaskService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "Assignee is not a member of this project"));
 
         task.setAssignee(assignee);
 
         Task savedTask = taskRepository.save(task);
 
-        taskActivityService.recordActivity(currentUser,
-                savedTask, TaskActivityType.ASSIGNED,
-                "Assigned the task to " + assignee.getName());
+        taskActivityService.recordActivity(
+                currentUser,
+                savedTask,
+                TaskActivityType.ASSIGNED,
+                "Assigned the task to " + assignee.getName()
+        );
 
         projectDashboardCacheService.evictDashboard(
                 task.getBoard().getProject().getId()
@@ -469,7 +486,10 @@ public class TaskService {
                 event
         );
 
-        notificationService.sendNotification(assignee ,  "You were assigned the task: " + task.getTitle());
+        notificationService.sendNotification(
+                assignee,
+                "You were assigned the task: " + task.getTitle()
+        );
 
         return toResponse(savedTask);
     }
@@ -482,7 +502,7 @@ public class TaskService {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                        new ResourceNotFoundException("Task not found"));
 
         Board oldBoard = task.getBoard();
         TaskStatus oldStatus = task.getTaskStatus();
@@ -490,7 +510,7 @@ public class TaskService {
         User currentUser = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -498,17 +518,17 @@ public class TaskService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         Board newBoard = boardRepository.findById(request.getBoardId())
                 .orElseThrow(() ->
-                        new RuntimeException("Target board not found"));
+                        new ResourceNotFoundException("Target board not found"));
 
         if (!newBoard.getProject().getId()
                 .equals(task.getBoard().getProject().getId())) {
 
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Target board does not belong to this project");
         }
 
@@ -519,9 +539,9 @@ public class TaskService {
                     newBoard.getName().toUpperCase()
             );
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException(
-                    "Unknown board status: " + newBoard.getName()
-            );
+
+            throw new BadRequestException(
+                    "Unknown board status: " + newBoard.getName());
         }
 
         if (newStatus != TaskStatus.TODO) {
@@ -535,7 +555,7 @@ public class TaskService {
 
                 if (blockingTask.getTaskStatus() != TaskStatus.DONE) {
 
-                    throw new RuntimeException(
+                    throw new BadRequestException(
                             "Task is blocked by: "
                                     + blockingTask.getTitle());
                 }
@@ -592,12 +612,12 @@ public class TaskService {
 
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() ->
-                        new RuntimeException("Board not found"));
+                        new ResourceNotFoundException("Board not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -605,36 +625,52 @@ public class TaskService {
                         board.getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
+        Specification<Task> specification =
+                TaskSpecification.hasBoard(board);
 
-        Specification<Task> specification = TaskSpecification.hasBoard(board);
-
-        if(status!= null){
-            specification=specification.and(TaskSpecification.hasStatus(status));
+        if (status != null) {
+            specification =
+                    specification.and(TaskSpecification.hasStatus(status));
         }
 
-        if(priority != null){
-            specification = specification.and(TaskSpecification.hasPriority(priority));
+        if (priority != null) {
+            specification =
+                    specification.and(TaskSpecification.hasPriority(priority));
         }
 
-        if(assigneeId!=null){
-            specification= specification.and(TaskSpecification.hasAssignee(assigneeId));
+        if (assigneeId != null) {
+            specification =
+                    specification.and(TaskSpecification.hasAssignee(assigneeId));
         }
 
-        if (title != null && !title.isBlank()){
-            specification= specification.and(TaskSpecification.titleContains(title));
+        if (title != null && !title.isBlank()) {
+            specification =
+                    specification.and(TaskSpecification.titleContains(title));
         }
 
-        if(dueDateFrom!= null){
-            specification= specification.and(TaskSpecification.dueDateGreaterThanOrEqual(dueDateFrom));
+        if (dueDateFrom != null) {
+            specification =
+                    specification.and(
+                            TaskSpecification.dueDateGreaterThanOrEqual(
+                                    dueDateFrom
+                            )
+                    );
         }
 
-        if (dueDateTo!=null){
-            specification = specification.and(TaskSpecification.dueDateLessThanOrEqual(dueDateTo));
+        if (dueDateTo != null) {
+            specification =
+                    specification.and(
+                            TaskSpecification.dueDateLessThanOrEqual(
+                                    dueDateTo
+                            )
+                    );
         }
 
-        return taskRepository.findAll(specification,pageable).map(this::toResponse);
+        return taskRepository
+                .findAll(specification, pageable)
+                .map(this::toResponse);
     }
 }

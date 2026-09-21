@@ -5,10 +5,12 @@ import com.sprintflow.backend.dto.auth.LoginRequest;
 import com.sprintflow.backend.dto.auth.RegisterRequest;
 import com.sprintflow.backend.dto.auth.RegisterResponse;
 import com.sprintflow.backend.entity.User;
+import com.sprintflow.backend.exception.ConflictException;
 import com.sprintflow.backend.repository.UserRepository;
 import com.sprintflow.backend.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.sprintflow.backend.exception.BadRequestException;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -21,7 +23,11 @@ public class AuthService {
     private final JwtService jwtService;
 
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService) {
+
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -29,8 +35,8 @@ public class AuthService {
 
     public RegisterResponse register(RegisterRequest request){
 
-        if(userRepository.findByEmail(request.getEmail()).isPresent()){
-            throw new RuntimeException("Email already Registered");
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new ConflictException("Email already registered");
         }
 
         User user = new User();
@@ -40,6 +46,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         User savedUser = userRepository.save(user);
+
         RegisterResponse response = new RegisterResponse();
 
         response.setUserId(savedUser.getId());
@@ -49,16 +56,20 @@ public class AuthService {
         return response;
     }
 
-    public AuthResponse login (LoginRequest request){
+    public AuthResponse login(LoginRequest request){
 
         System.out.println("🔥 LOGIN METHOD REACHED");
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(()->
-                        new RuntimeException("Invalid Email or password"));
+                .orElseThrow(() ->
+                        new BadRequestException(
+                                "Invalid Email or password"));
 
-        if(!passwordEncoder.matches(request.getPassword(), user.getPassword())){
-            throw new RuntimeException("Invalid email or password");
+        if (!passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword())) {
+
+            throw new BadRequestException("Invalid email or password");
         }
 
         String token = jwtService.generateToken(

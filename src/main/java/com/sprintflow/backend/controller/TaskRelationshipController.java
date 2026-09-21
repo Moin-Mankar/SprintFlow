@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,7 +27,7 @@ public class TaskRelationshipController {
 
     @PostMapping
     public ResponseEntity<TaskRelationshipResponse> createRelationship(
-            @RequestBody TaskRelationshipRequest request,
+            @Valid @RequestBody TaskRelationshipRequest request,
             Authentication authentication) {
 
         return ResponseEntity.status(201).body(
