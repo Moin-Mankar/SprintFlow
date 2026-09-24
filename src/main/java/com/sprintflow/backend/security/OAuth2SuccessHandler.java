@@ -6,7 +6,9 @@ import com.sprintflow.backend.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -68,6 +70,14 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                         .disabled(!user.isEnabled())
                         .build()
         );
+
+        // Without this the OAuth session outlives the JWT it was exchanged for: its principal
+        // is Google's numeric subject, not the email every service looks users up by.
+        SecurityContextHolder.clearContext();
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
 
         response.setContentType("application/json");
         response.getWriter().write(

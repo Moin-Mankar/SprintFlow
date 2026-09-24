@@ -28,6 +28,7 @@ public class User {
 
     private boolean enabled;
 
+    @Column(columnDefinition = "TEXT")
     private String fcmToken;
 
     @Column(nullable = false)

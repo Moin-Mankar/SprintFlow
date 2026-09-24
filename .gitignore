@@ -34,8 +34,7 @@ build/
 
 firebase-service-account.json
 
-# Firebase
-firebase-service-account.json
+
 
 # Environment / secrets
 .env
@@ -45,3 +44,7 @@ firebase-service-account.json
 application-local.properties
 
 *.log
+
+Dockerfile
+
+.dockerignore
