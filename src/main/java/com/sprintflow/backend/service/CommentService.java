@@ -10,6 +10,8 @@ import com.sprintflow.backend.repository.CommentRepository;
 import com.sprintflow.backend.repository.ProjectMemberRepository;
 import com.sprintflow.backend.repository.TaskRepository;
 import com.sprintflow.backend.repository.UserRepository;
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +35,9 @@ public class CommentService {
             CommentRepository commentRepository,
             TaskRepository taskRepository,
             UserRepository userRepository,
-            ProjectMemberRepository projectMemberRepository, TaskActivityService taskActivityService, WebSocketEventService webSocketEventService) {
+            ProjectMemberRepository projectMemberRepository,
+            TaskActivityService taskActivityService,
+            WebSocketEventService webSocketEventService) {
 
         this.commentRepository = commentRepository;
         this.taskRepository = taskRepository;
@@ -51,12 +55,12 @@ public class CommentService {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                        new ResourceNotFoundException("Task not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -64,7 +68,7 @@ public class CommentService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         Comment comment = new Comment();
@@ -115,18 +119,19 @@ public class CommentService {
         return response;
     }
 
+    @Transactional(readOnly = true)
     public List<CommentResponse> getComments(
             UUID taskId,
             Authentication authentication) {
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                        new ResourceNotFoundException("Task not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(
@@ -134,7 +139,7 @@ public class CommentService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         return commentRepository
@@ -151,15 +156,15 @@ public class CommentService {
 
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() ->
-                        new RuntimeException("Comment not found"));
+                        new ResourceNotFoundException("Comment not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         if (!comment.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "You can only delete your own comments");
         }
 

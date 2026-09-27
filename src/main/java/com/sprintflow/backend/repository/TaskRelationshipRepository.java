@@ -2,6 +2,7 @@ package com.sprintflow.backend.repository;
 
 import com.sprintflow.backend.entity.TaskRelationship;
 import com.sprintflow.backend.entity.Task;
+import com.sprintflow.backend.entity.Workspace;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -14,6 +15,10 @@ public interface TaskRelationshipRepository extends JpaRepository<TaskRelationsh
     List<TaskRelationship> findByTargetTask(Task task);
 
     boolean existsBySourceTaskAndTargetTask(Task sourceTask, Task targetTask);
+
+    void deleteBySourceTask_Board_Project_Workspace(Workspace workspace);
+
+    void deleteByTargetTask_Board_Project_Workspace(Workspace workspace);
 
 
     @Query("""

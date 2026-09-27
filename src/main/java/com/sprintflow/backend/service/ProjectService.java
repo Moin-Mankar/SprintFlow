@@ -5,6 +5,7 @@ import com.sprintflow.backend.entity.*;
 import com.sprintflow.backend.enums.ProjectRole;
 import com.sprintflow.backend.enums.ProjectStatus;
 import com.sprintflow.backend.enums.WorkspaceRole;
+import com.sprintflow.backend.repository.BoardRepository;
 import com.sprintflow.backend.repository.ProjectMemberRepository;
 import com.sprintflow.backend.repository.ProjectRepository;
 import com.sprintflow.backend.repository.UserRepository;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final BoardRepository boardRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
@@ -36,6 +38,7 @@ public class ProjectService {
 
     public ProjectService(
             ProjectRepository projectRepository,
+            BoardRepository boardRepository,
             ProjectMemberRepository projectMemberRepository,
             WorkspaceRepository workspaceRepository,
             WorkspaceMemberRepository workspaceMemberRepository,
@@ -43,6 +46,7 @@ public class ProjectService {
             ProjectMembersCacheService projectMembersCacheService) {
 
         this.projectRepository = projectRepository;
+        this.boardRepository = boardRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.workspaceRepository = workspaceRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
@@ -98,6 +102,17 @@ public class ProjectService {
         projectMember.setProjectRole(ProjectRole.MANAGER);
 
         projectMemberRepository.save(projectMember);
+
+        // Every new project starts with the fixed SprintFlow workflow.
+        // Position is persisted so the board order is deterministic after reload.
+        String[] defaultBoards = {"TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"};
+        for (int position = 0; position < defaultBoards.length; position++) {
+            Board board = new Board();
+            board.setName(defaultBoards[position]);
+            board.setPosition(position);
+            board.setProject(savedProject);
+            boardRepository.save(board);
+        }
 
         ProjectResponse response = new ProjectResponse();
 
@@ -358,6 +373,7 @@ public class ProjectService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<ProjectMemberResponse> getProjectMembers(
             UUID projectId,
             Authentication authentication) {

@@ -18,6 +18,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> ,JpaSpecificat
 
     List<Task> findByBoard(Board board);
 
+    void deleteByBoard_Project_Workspace(Workspace workspace);
+
     long countByBoard_Project_Workspace(Workspace workspace);
 
     long countByBoard_Project_WorkspaceAndTaskStatus(

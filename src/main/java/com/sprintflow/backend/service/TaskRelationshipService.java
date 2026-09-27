@@ -5,11 +5,15 @@ import com.sprintflow.backend.dto.task.TaskRelationshipResponse;
 import com.sprintflow.backend.entity.*;
 import com.sprintflow.backend.enums.ProjectRole;
 import com.sprintflow.backend.enums.TaskRelationshipType;
+import com.sprintflow.backend.exception.BadRequestException;
+import com.sprintflow.backend.exception.ConflictException;
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 import com.sprintflow.backend.repository.ProjectMemberRepository;
 import com.sprintflow.backend.repository.TaskRelationshipRepository;
 import com.sprintflow.backend.repository.TaskRepository;
 import com.sprintflow.backend.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import com.sprintflow.backend.service.caching.ProjectDashboardCacheService;
@@ -37,22 +41,22 @@ public class TaskRelationshipService {
     @Transactional
     public TaskRelationshipResponse createRelationship(TaskRelationshipRequest request, Authentication authentication){
         Task sourceTask = taskRepository.findById(request.getSourceTaskId()).orElseThrow(()->
-                new RuntimeException("Task with id :" + request.getSourceTaskId() + " not found"));
+                new ResourceNotFoundException("Task with id :" + request.getSourceTaskId() + " not found"));
 
         Task targetTask = taskRepository.findById(request.getTargetTaskId()).orElseThrow(()->
-                new RuntimeException("Task with id :" + request.getSourceTaskId() + " not found"));
+                new ResourceNotFoundException("Task with id :" + request.getSourceTaskId() + " not found"));
 
         if(sourceTask.getId().equals(targetTask.getId())){
-            throw  new RuntimeException("A task cannot have relationship with itself");
+            throw  new BadRequestException("A task cannot have relationship with itself");
         }
 
         if(!sourceTask.getBoard().getProject().getId().equals(targetTask.getBoard().getProject().getId())){
-            throw  new RuntimeException("Tasks must belong to the same project");
+            throw  new BadRequestException("Tasks must belong to the same project");
         }
 
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         verifyRelationshipPermission(
                 user,
@@ -60,7 +64,7 @@ public class TaskRelationshipService {
         );
 
         if(taskRelationshipRepository.existsBySourceTaskAndTargetTask(sourceTask, targetTask)){
-            throw  new RuntimeException("This task relationship already exists");
+            throw  new ConflictException("This task relationship already exists");
         }
 
         TaskRelationship relationship = new TaskRelationship();
@@ -96,18 +100,18 @@ public class TaskRelationshipService {
     public void verifyRelationshipPermission(User user , Project project){
 
         ProjectMember member = projectMemberRepository.findByUserAndProject(user, project)
-                .orElseThrow(()->new RuntimeException(
+                .orElseThrow(()->new ForbiddenException(
                         "You are not a member of this project"));
 
         if(member.getProjectRole() != ProjectRole.OWNER && member.getProjectRole() !=ProjectRole.MANAGER){
-            throw  new RuntimeException("Only project owners and managers can manage task relationships");
+            throw  new ForbiddenException("Only project owners and managers can manage task relationships");
         }
     }
 
     @Transactional
     public void deleteRelationship(UUID relatioshipId, Authentication authentication){
         TaskRelationship relationship = taskRelationshipRepository.findById(relatioshipId).orElseThrow(() ->
-                new RuntimeException(
+                new ResourceNotFoundException(
                         "Task relationship not found"));
 
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow(() ->
@@ -126,6 +130,7 @@ public class TaskRelationshipService {
         projectDashboardCacheService.evictDashboard(projectId);
     }
 
+    @Transactional(readOnly = true)
     public List<TaskRelationshipResponse> getRelationshipsForTask(
             UUID taskId,
             Authentication authentication) {
@@ -157,12 +162,12 @@ public class TaskRelationshipService {
         Task task = taskRepository
                 .findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                        new ResourceNotFoundException("Task not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
 
         projectMemberRepository
@@ -171,7 +176,7 @@ public class TaskRelationshipService {
                         task.getBoard().getProject()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         return task;

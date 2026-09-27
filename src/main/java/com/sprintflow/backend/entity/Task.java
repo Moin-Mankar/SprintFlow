@@ -43,11 +43,13 @@ public class Task {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    public void onCreate(){
-        this.createdAt= LocalDateTime.now();
-        this.updatedAt=LocalDateTime.now();
-        this.taskPriority=TaskPriority.MEDIUM;
-        this.taskStatus=TaskStatus.TODO;
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+
+        if (taskStatus == null) {
+            taskStatus = TaskStatus.TODO;
+        }
     }
 
     @PreUpdate

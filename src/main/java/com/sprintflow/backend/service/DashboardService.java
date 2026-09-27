@@ -4,6 +4,8 @@ import com.sprintflow.backend.dto.dashboard.DashboardResponse;
 import com.sprintflow.backend.entity.User;
 import com.sprintflow.backend.entity.Workspace;
 import com.sprintflow.backend.enums.TaskStatus;
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 import com.sprintflow.backend.repository.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -42,17 +44,17 @@ public class DashboardService {
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() ->
-                        new RuntimeException("Workspace not found"));
+                        new ResourceNotFoundException("Workspace not found"));
 
         User user = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         workspaceMemberRepository
                 .findByUserAndWorkspace(user, workspace)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this workspace"));
 
         long totalProjects =

@@ -3,9 +3,11 @@ package com.sprintflow.backend.service;
 import com.sprintflow.backend.dto.task.*;
 import com.sprintflow.backend.dto.websocket.ProjectEvent;
 import com.sprintflow.backend.entity.Board;
+import com.sprintflow.backend.entity.ProjectMember;
 import com.sprintflow.backend.entity.Task;
 import com.sprintflow.backend.entity.TaskRelationship;
 import com.sprintflow.backend.entity.User;
+import com.sprintflow.backend.enums.ProjectRole;
 import com.sprintflow.backend.enums.TaskActivityType;
 import com.sprintflow.backend.enums.TaskPriority;
 import com.sprintflow.backend.enums.TaskStatus;
@@ -40,6 +42,7 @@ public class TaskService {
     private final TaskRelationshipRepository taskRelationshipRepository;
     private final ProjectDashboardCacheService projectDashboardCacheService;
     private final WebSocketEventService webSocketEventService;
+    private final TaskActivityRepository taskActivityRepository;
 
     public TaskService(
             TaskRepository taskRepository,
@@ -50,7 +53,8 @@ public class TaskService {
             TaskActivityService taskActivityService,
             TaskRelationshipRepository taskRelationshipRepository,
             ProjectDashboardCacheService projectDashboardCacheService,
-            WebSocketEventService webSocketEventService) {
+            WebSocketEventService webSocketEventService,
+            TaskActivityRepository taskActivityRepository) {
 
         this.taskRepository = taskRepository;
         this.boardRepository = boardRepository;
@@ -61,6 +65,7 @@ public class TaskService {
         this.taskRelationshipRepository = taskRelationshipRepository;
         this.projectDashboardCacheService = projectDashboardCacheService;
         this.webSocketEventService = webSocketEventService;
+        this.taskActivityRepository = taskActivityRepository;
     }
 
     @Transactional
@@ -94,6 +99,8 @@ public class TaskService {
         task.setDueDate(request.getDueDate());
         task.setBoard(board);
         task.setCreatedBy(currentUser);
+
+        task.setTaskStatus(getStatusForBoard(board));
 
         if (request.getAssigneeId() != null) {
 
@@ -198,6 +205,7 @@ public class TaskService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public TaskResponse getTask(
             UUID taskId,
             Authentication authentication) {
@@ -233,6 +241,18 @@ public class TaskService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Task not found"));
 
+        User currentUser = userRepository
+                .findByEmail(authentication.getName())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        ProjectMember currentMember = getProjectMember(
+                currentUser,
+                task.getBoard().getProject()
+        );
+
+        ensureTaskCanBeModified(task, currentMember);
+
         TaskPriority oldPriority = task.getTaskPriority();
         TaskStatus oldStatus = task.getTaskStatus();
         User oldAssignee = task.getAssignee();
@@ -241,24 +261,10 @@ public class TaskService {
         String oldDescription = task.getDescription();
         LocalDateTime oldDueDate = task.getDueDate();
 
-        User currentUser = userRepository
-                .findByEmail(authentication.getName())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
-
-        projectMemberRepository
-                .findByUserAndProject(
-                        currentUser,
-                        task.getBoard().getProject()
-                )
-                .orElseThrow(() ->
-                        new ForbiddenException(
-                                "You are not a member of this project"));
-
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setTaskPriority(request.getTaskPriority());
-        task.setTaskStatus(request.getTaskStatus());
+        task.setTaskStatus(getStatusForBoard(task.getBoard()));
         task.setDueDate(request.getDueDate());
 
         if (request.getAssigneeId() != null) {
@@ -278,9 +284,6 @@ public class TaskService {
                                     "Assignee is not a member of this project"));
 
             task.setAssignee(assignee);
-
-        } else {
-            task.setAssignee(null);
         }
 
         Task savedTask = taskRepository.save(task);
@@ -403,7 +406,7 @@ public class TaskService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
-        projectMemberRepository
+        ProjectMember member = projectMemberRepository
                 .findByUserAndProject(
                         user,
                         task.getBoard().getProject()
@@ -412,8 +415,16 @@ public class TaskService {
                         new ForbiddenException(
                                 "You are not a member of this project"));
 
+        if (member.getProjectRole() != ProjectRole.OWNER &&
+                member.getProjectRole() != ProjectRole.MANAGER) {
+
+            throw new ForbiddenException(
+                    "Only project owners and managers can delete tasks");
+        }
+
         UUID projectId = task.getBoard().getProject().getId();
 
+        taskActivityRepository.deleteByTask(task);
         taskRepository.delete(task);
 
         projectDashboardCacheService.evictDashboard(projectId);
@@ -434,14 +445,14 @@ public class TaskService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
-        projectMemberRepository
-                .findByUserAndProject(
-                        currentUser,
-                        task.getBoard().getProject()
-                )
-                .orElseThrow(() ->
-                        new ForbiddenException(
-                                "You are not a member of this project"));
+        ProjectMember currentMember = getProjectMember(
+                currentUser,
+                task.getBoard().getProject()
+        );
+
+        ensureOwnerOrManager(currentMember);
+
+        ensureTaskIsNotDone(task);
 
         User assignee = userRepository
                 .findById(request.getAssigneeId())
@@ -504,22 +515,20 @@ public class TaskService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Task not found"));
 
-        Board oldBoard = task.getBoard();
-        TaskStatus oldStatus = task.getTaskStatus();
-
         User currentUser = userRepository
                 .findByEmail(authentication.getName())
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
-        projectMemberRepository
-                .findByUserAndProject(
-                        currentUser,
-                        task.getBoard().getProject()
-                )
-                .orElseThrow(() ->
-                        new ForbiddenException(
-                                "You are not a member of this project"));
+        ProjectMember currentMember = getProjectMember(
+                currentUser,
+                task.getBoard().getProject()
+        );
+
+        ensureTaskCanBeModified(task, currentMember);
+
+        Board oldBoard = task.getBoard();
+        TaskStatus oldStatus = task.getTaskStatus();
 
         Board newBoard = boardRepository.findById(request.getBoardId())
                 .orElseThrow(() ->
@@ -532,17 +541,7 @@ public class TaskService {
                     "Target board does not belong to this project");
         }
 
-        TaskStatus newStatus;
-
-        try {
-            newStatus = TaskStatus.valueOf(
-                    newBoard.getName().toUpperCase()
-            );
-        } catch (IllegalArgumentException e) {
-
-            throw new BadRequestException(
-                    "Unknown board status: " + newBoard.getName());
-        }
+        TaskStatus newStatus = getStatusForBoard(newBoard);
 
         if (newStatus != TaskStatus.TODO) {
 
@@ -599,6 +598,7 @@ public class TaskService {
         return toResponse(savedTask);
     }
 
+    @Transactional(readOnly = true)
     public Page<TaskResponse> searchTasks(
             UUID boardId,
             TaskStatus status,
@@ -672,5 +672,77 @@ public class TaskService {
         return taskRepository
                 .findAll(specification, pageable)
                 .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    private ProjectMember getProjectMember(
+            User user,
+            com.sprintflow.backend.entity.Project project) {
+
+        return projectMemberRepository
+                .findByUserAndProject(user, project)
+                .orElseThrow(() ->
+                        new ForbiddenException(
+                                "You are not a member of this project"));
+    }
+
+    private void ensureOwnerOrManager(ProjectMember member) {
+
+        ProjectRole role = member.getProjectRole();
+
+        if (role != ProjectRole.OWNER &&
+                role != ProjectRole.MANAGER) {
+
+            throw new ForbiddenException(
+                    "Only the project owner or manager can perform this action");
+        }
+    }
+
+    private void ensureTaskCanBeModified(
+            Task task,
+            ProjectMember member) {
+
+        ensureTaskIsNotDone(task);
+
+        ProjectRole role = member.getProjectRole();
+
+        boolean isOwnerOrManager =
+                role == ProjectRole.OWNER ||
+                        role == ProjectRole.MANAGER;
+
+        boolean isAssignee =
+                task.getAssignee() != null &&
+                        task.getAssignee().getId().equals(
+                                member.getUser().getId()
+                        );
+
+        if (!isOwnerOrManager && !isAssignee) {
+
+            throw new ForbiddenException(
+                    "Only the task assignee, project owner, or manager can modify this task");
+        }
+    }
+
+    private void ensureTaskIsNotDone(Task task) {
+
+        if (task.getTaskStatus() == TaskStatus.DONE) {
+
+            throw new ForbiddenException(
+                    "Completed tasks cannot be modified");
+        }
+    }
+
+    private TaskStatus getStatusForBoard(Board board) {
+
+        return switch (board.getName().trim().toUpperCase()) {
+            case "TODO" -> TaskStatus.TODO;
+            case "IN PROGRESS" -> TaskStatus.IN_PROGRESS;
+            case "IN REVIEW" -> TaskStatus.IN_REVIEW;
+            case "DONE" -> TaskStatus.DONE;
+
+            default -> throw new BadRequestException(
+                    "Unknown board status: " + board.getName()
+            );
+        };
     }
 }

@@ -30,7 +30,7 @@ public class ProjectBoardsCacheService {
             UUID projectId,
             Project project) {
 
-        return boardRepository.findByProject(project)
+        return boardRepository.findByProjectOrderByPositionAsc(project)
                 .stream()
                 .map(this::toResponse)
                 .toList();

@@ -9,6 +9,8 @@ import com.sprintflow.backend.repository.UserRepository;
 import com.sprintflow.backend.service.caching.ProjectDashboardCacheService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 
 
 import java.util.UUID;
@@ -39,16 +41,16 @@ public class ProjectDashboardService {
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found"));
+                        new ResourceNotFoundException("Project not found"));
 
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         projectMemberRepository
                 .findByUserAndProject(user, project)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ForbiddenException(
                                 "You are not a member of this project"));
 
         return projectDashboardCacheService.getDashboard(

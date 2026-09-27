@@ -5,7 +5,14 @@ import com.sprintflow.backend.entity.User;
 import com.sprintflow.backend.entity.Workspace;
 import com.sprintflow.backend.entity.WorkspaceMember;
 import com.sprintflow.backend.enums.WorkspaceRole;
+import com.sprintflow.backend.repository.BoardRepository;
+import com.sprintflow.backend.repository.CommentRepository;
 import com.sprintflow.backend.repository.InvitationRepository;
+import com.sprintflow.backend.repository.ProjectMemberRepository;
+import com.sprintflow.backend.repository.ProjectRepository;
+import com.sprintflow.backend.repository.TaskActivityRepository;
+import com.sprintflow.backend.repository.TaskRelationshipRepository;
+import com.sprintflow.backend.repository.TaskRepository;
 import com.sprintflow.backend.repository.UserRepository;
 import com.sprintflow.backend.repository.WorkspaceMemberRepository;
 import com.sprintflow.backend.repository.WorkspaceRepository;
@@ -28,17 +35,38 @@ public class WorkspaceService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final UserRepository userRepository;
     private final InvitationRepository invitationRepository;
+    private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final BoardRepository boardRepository;
+    private final TaskRepository taskRepository;
+    private final TaskRelationshipRepository taskRelationshipRepository;
+    private final TaskActivityRepository taskActivityRepository;
+    private final CommentRepository commentRepository;
 
     public WorkspaceService(
             WorkspaceRepository workspaceRepository,
             WorkspaceMemberRepository workspaceMemberRepository,
             UserRepository userRepository,
-            InvitationRepository invitationRepository) {
+            InvitationRepository invitationRepository,
+            ProjectRepository projectRepository,
+            ProjectMemberRepository projectMemberRepository,
+            BoardRepository boardRepository,
+            TaskRepository taskRepository,
+            TaskRelationshipRepository taskRelationshipRepository,
+            TaskActivityRepository taskActivityRepository,
+            CommentRepository commentRepository) {
 
         this.workspaceRepository = workspaceRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
         this.userRepository = userRepository;
         this.invitationRepository = invitationRepository;
+        this.projectRepository = projectRepository;
+        this.projectMemberRepository = projectMemberRepository;
+        this.boardRepository = boardRepository;
+        this.taskRepository = taskRepository;
+        this.taskRelationshipRepository = taskRelationshipRepository;
+        this.taskActivityRepository = taskActivityRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Transactional
@@ -72,6 +100,7 @@ public class WorkspaceService {
         return savedWorkspace;
     }
 
+    @Transactional(readOnly = true)
     public List<WorkspaceResponse> getMyWorkspaces(
             Authentication authentication) {
 
@@ -211,6 +240,26 @@ public class WorkspaceService {
             throw new ForbiddenException(
                     "Only the workspace owner can delete the workspace");
         }
+
+        taskRelationshipRepository
+                .deleteBySourceTask_Board_Project_Workspace(workspace);
+
+        taskRelationshipRepository
+                .deleteByTargetTask_Board_Project_Workspace(workspace);
+
+        commentRepository.deleteByTask_Board_Project_Workspace(workspace);
+
+        taskActivityRepository.deleteByTask_Board_Project_Workspace(workspace);
+
+        taskRepository.deleteByBoard_Project_Workspace(workspace);
+
+        boardRepository.deleteByProject_Workspace(workspace);
+
+        projectMemberRepository.deleteByProject_Workspace(workspace);
+
+        invitationRepository.deleteByWorkspace(workspace);
+
+        projectRepository.deleteByWorkspace(workspace);
 
         workspaceMemberRepository.deleteByWorkspace(workspace);
 

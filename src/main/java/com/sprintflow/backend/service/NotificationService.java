@@ -5,6 +5,8 @@ import com.google.firebase.messaging.Message;
 import com.sprintflow.backend.dto.notification.NotificationResponseDto;
 import com.sprintflow.backend.entity.Notification;
 import com.sprintflow.backend.entity.User;
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 import com.sprintflow.backend.repository.NotificationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -81,7 +83,7 @@ public class NotificationService {
         Notification notification = notificationRepository
                 .findById(notificationId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Notification with id: "
                                         + notificationId
                                         + " not found"
@@ -89,7 +91,7 @@ public class NotificationService {
                 );
 
         if (!notification.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "You are not allowed to access this notification"
             );
         }

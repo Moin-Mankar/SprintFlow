@@ -2,6 +2,7 @@ package com.sprintflow.backend.controller;
 
 import com.sprintflow.backend.dto.board.BoardResponse;
 import com.sprintflow.backend.dto.board.CreateBoardRequest;
+import com.sprintflow.backend.dto.board.ReorderBoardsRequest;
 import com.sprintflow.backend.service.BoardService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -44,6 +45,19 @@ public class BoardController {
 
         return boardService.getBoards(
                 projectId,
+                authentication
+        );
+    }
+
+    @PutMapping("/reorder")
+    public List<BoardResponse> reorderBoards(
+            @PathVariable UUID projectId,
+            @Valid @RequestBody ReorderBoardsRequest request,
+            Authentication authentication) {
+
+        return boardService.reorderBoards(
+                projectId,
+                request,
                 authentication
         );
     }

@@ -5,6 +5,7 @@ import com.sprintflow.backend.entity.Invitation;
 import com.sprintflow.backend.entity.Workspace;
 import com.sprintflow.backend.service.WorkspaceService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;

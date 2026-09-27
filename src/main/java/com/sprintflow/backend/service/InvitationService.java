@@ -5,6 +5,10 @@ import com.sprintflow.backend.entity.User;
 import com.sprintflow.backend.entity.Workspace;
 import com.sprintflow.backend.entity.WorkspaceMember;
 import com.sprintflow.backend.enums.WorkspaceRole;
+import com.sprintflow.backend.exception.BadRequestException;
+import com.sprintflow.backend.exception.ConflictException;
+import com.sprintflow.backend.exception.ForbiddenException;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 import com.sprintflow.backend.repository.InvitationRepository;
 import com.sprintflow.backend.repository.UserRepository;
 import com.sprintflow.backend.repository.WorkspaceMemberRepository;
@@ -38,32 +42,32 @@ public class InvitationService {
 
         Invitation invitation = invitationRepository.findByToken(token)
                 .orElseThrow(() ->
-                        new RuntimeException("Invalid invitation"));
+                        new ResourceNotFoundException("Invalid invitation"));
 
         if (invitation.isUsed()) {
-            throw new RuntimeException("Invitation has already been used");
+            throw new ConflictException("Invitation has already been used");
         }
 
         if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Invitation has expired");
+            throw new BadRequestException("Invitation has expired");
         }
 
         String email = authentication.getName();
 
         if (!email.equalsIgnoreCase(invitation.getEmail())) {
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "This invitation was not created for your email");
         }
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found"));
+                        new ResourceNotFoundException("Authenticated user not found"));
 
         if (workspaceMemberRepository
                 .findByUserAndWorkspace(user, invitation.getWorkspace())
                 .isPresent()) {
 
-            throw new RuntimeException(
+            throw new ResourceNotFoundException(
                     "User is already a member of this workspace");
         }
 

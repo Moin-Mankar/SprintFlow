@@ -1,6 +1,7 @@
 package com.sprintflow.backend.service;
 
 import com.sprintflow.backend.entity.User;
+import com.sprintflow.backend.exception.ResourceNotFoundException;
 import com.sprintflow.backend.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +17,7 @@ public class UserService {
 
     public void updateFcmToken(String email , String fcmToken){
         User user = userRepository.findByEmail(email).orElseThrow(
-                ()-> new RuntimeException("User with eamil " + email + " not found")
+                ()-> new ResourceNotFoundException("User with eamil " + email + " not found")
         );
 
         user.setFcmToken(fcmToken);

@@ -11,4 +11,6 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
     List<Project> findByWorkspace(Workspace workspace);
 
     long countByWorkspace(Workspace workspace);
+
+    void deleteByWorkspace(Workspace workspace);
 }
