@@ -151,12 +151,12 @@ class OAuth2SuccessHandlerSessionTest {
     }
 
     /**
-     * JwtAuthenticationFilter only claims a request when nothing has authenticated it yet, so a
-     * session context outranks a valid bearer JWT. Once the handler drops the session the filter
-     * sees the bearer alone and the email principal wins.
+     * JwtAuthenticationFilter must give the bearer JWT precedence over any stale
+     * session
+     * authentication for API requests.
      */
     @Test
-    void sessionContextOutranksBearerJwtButIsGoneOnceHandlerRuns() throws Exception {
+    void bearerJwtOutranksAnyStaleSessionContext() throws Exception {
         JwtService jwtService = new JwtService();
         java.lang.reflect.Field secret = JwtService.class.getDeclaredField("secretKey");
         secret.setAccessible(true);
@@ -169,7 +169,9 @@ class OAuth2SuccessHandlerSessionTest {
         stored.setName("Moin Mankar");
         stored.setPassword("encoded");
         stored.setEnabled(true);
+
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(stored));
+
         com.sprintflow.backend.service.CustomUserDetailsService uds =
                 new com.sprintflow.backend.service.CustomUserDetailsService(userRepository);
 
@@ -177,28 +179,43 @@ class OAuth2SuccessHandlerSessionTest {
 
         JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtService, uds);
 
-        // A session context is what SecurityContextHolderFilter installs from JSESSIONID.
+        // A stale session context must not override the bearer JWT.
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(SUBJECT, null, List.of()));
-        MockHttpServletRequest withSession = new MockHttpServletRequest("GET", "/api/workspaces");
+
+        MockHttpServletRequest withSession =
+                new MockHttpServletRequest("GET", "/api/workspaces");
+
         withSession.addHeader("Authorization", "Bearer " + jwt);
-        filter.doFilter(withSession, new MockHttpServletResponse(),
+
+        filter.doFilter(
+                withSession,
+                new MockHttpServletResponse(),
                 new org.springframework.mock.web.MockFilterChain());
 
         assertThat(SecurityContextHolder.getContext().getAuthentication().getName())
-                .as("session principal wins, so findByEmail(<subject>) 404s")
-                .isEqualTo(SUBJECT);
+                .as("Bearer JWT must outrank a stale session context for API requests")
+                .isEqualTo(EMAIL);
 
         SecurityContextHolder.clearContext();
-        MockHttpServletRequest jwtOnly = new MockHttpServletRequest("GET", "/api/workspaces");
+
+        MockHttpServletRequest jwtOnly =
+                new MockHttpServletRequest("GET", "/api/workspaces");
+
         jwtOnly.addHeader("Authorization", "Bearer " + jwt);
-        filter.doFilter(jwtOnly, new MockHttpServletResponse(),
+
+        filter.doFilter(
+                jwtOnly,
+                new MockHttpServletResponse(),
                 new org.springframework.mock.web.MockFilterChain());
 
         assertThat(SecurityContextHolder.getContext().getAuthentication())
                 .as("with no OAuth session left behind the bearer token authenticates as the email")
                 .isNotNull();
-        assertThat(SecurityContextHolder.getContext().getAuthentication().getName()).isEqualTo(EMAIL);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getName())
+                .isEqualTo(EMAIL);
+
         SecurityContextHolder.clearContext();
     }
 }

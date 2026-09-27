@@ -70,9 +70,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                         .disabled(!user.isEnabled())
                         .build()
         );
-
-        // Without this the OAuth session outlives the JWT it was exchanged for: its principal
-        // is Google's numeric subject, not the email every service looks users up by.
+        
         SecurityContextHolder.clearContext();
         HttpSession session = request.getSession(false);
         if (session != null) {

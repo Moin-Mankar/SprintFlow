@@ -402,6 +402,7 @@ public class ProjectService {
         );
     }
 
+    @Transactional
     public ProjectMemberResponse updateProjectMemberRole(
             UUID projectId,
             UUID userId,

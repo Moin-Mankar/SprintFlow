@@ -43,6 +43,7 @@ public class TaskService {
     private final ProjectDashboardCacheService projectDashboardCacheService;
     private final WebSocketEventService webSocketEventService;
     private final TaskActivityRepository taskActivityRepository;
+    private final CommentRepository commentRepository;
 
     public TaskService(
             TaskRepository taskRepository,
@@ -54,7 +55,7 @@ public class TaskService {
             TaskRelationshipRepository taskRelationshipRepository,
             ProjectDashboardCacheService projectDashboardCacheService,
             WebSocketEventService webSocketEventService,
-            TaskActivityRepository taskActivityRepository) {
+            TaskActivityRepository taskActivityRepository, CommentRepository commentRepository) {
 
         this.taskRepository = taskRepository;
         this.boardRepository = boardRepository;
@@ -66,6 +67,7 @@ public class TaskService {
         this.projectDashboardCacheService = projectDashboardCacheService;
         this.webSocketEventService = webSocketEventService;
         this.taskActivityRepository = taskActivityRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Transactional
@@ -98,6 +100,7 @@ public class TaskService {
         task.setDescription(request.getDescription());
         task.setDueDate(request.getDueDate());
         task.setBoard(board);
+        task.setTaskPriority(TaskPriority.MEDIUM);
         task.setCreatedBy(currentUser);
 
         task.setTaskStatus(getStatusForBoard(board));
@@ -177,6 +180,7 @@ public class TaskService {
         return response;
     }
 
+    @Transactional(readOnly = true)
     public List<TaskResponse> getTasks(
             UUID boardId,
             Authentication authentication) {
@@ -261,9 +265,12 @@ public class TaskService {
         String oldDescription = task.getDescription();
         LocalDateTime oldDueDate = task.getDueDate();
 
+        if (request.getTaskPriority() != null) {
+            task.setTaskPriority(request.getTaskPriority());
+        }
+
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
-        task.setTaskPriority(request.getTaskPriority());
         task.setTaskStatus(getStatusForBoard(task.getBoard()));
         task.setDueDate(request.getDueDate());
 
@@ -422,8 +429,13 @@ public class TaskService {
                     "Only project owners and managers can delete tasks");
         }
 
+        ensureTaskIsNotDone(task);
+
         UUID projectId = task.getBoard().getProject().getId();
 
+        taskRelationshipRepository.deleteBySourceTask(task);
+        taskRelationshipRepository.deleteByTargetTask(task);
+        commentRepository.deleteByTask(task);
         taskActivityRepository.deleteByTask(task);
         taskRepository.delete(task);
 
@@ -736,8 +748,8 @@ public class TaskService {
 
         return switch (board.getName().trim().toUpperCase()) {
             case "TODO" -> TaskStatus.TODO;
-            case "IN PROGRESS" -> TaskStatus.IN_PROGRESS;
-            case "IN REVIEW" -> TaskStatus.IN_REVIEW;
+            case "IN_PROGRESS", "IN PROGRESS" -> TaskStatus.IN_PROGRESS;
+            case "IN_REVIEW", "IN REVIEW" -> TaskStatus.IN_REVIEW;
             case "DONE" -> TaskStatus.DONE;
 
             default -> throw new BadRequestException(

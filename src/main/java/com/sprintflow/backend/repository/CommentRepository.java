@@ -13,4 +13,6 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     List<Comment> findByTaskOrderByCreatedAtAsc(Task task);
 
     void deleteByTask_Board_Project_Workspace(Workspace workspace);
+
+    void deleteByTask(Task task);
 }

@@ -5,6 +5,7 @@ import com.sprintflow.backend.dto.task.TaskRelationshipResponse;
 import com.sprintflow.backend.entity.*;
 import com.sprintflow.backend.enums.ProjectRole;
 import com.sprintflow.backend.enums.TaskRelationshipType;
+import com.sprintflow.backend.enums.TaskStatus;
 import com.sprintflow.backend.exception.BadRequestException;
 import com.sprintflow.backend.exception.ConflictException;
 import com.sprintflow.backend.exception.ForbiddenException;
@@ -17,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import com.sprintflow.backend.service.caching.ProjectDashboardCacheService;
+import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
 
 import java.util.List;
 import java.util.UUID;
@@ -44,7 +48,7 @@ public class TaskRelationshipService {
                 new ResourceNotFoundException("Task with id :" + request.getSourceTaskId() + " not found"));
 
         Task targetTask = taskRepository.findById(request.getTargetTaskId()).orElseThrow(()->
-                new ResourceNotFoundException("Task with id :" + request.getSourceTaskId() + " not found"));
+                new ResourceNotFoundException("Task with id :" + request.getTargetTaskId() + " not found"));
 
         if(sourceTask.getId().equals(targetTask.getId())){
             throw  new BadRequestException("A task cannot have relationship with itself");
@@ -52,6 +56,13 @@ public class TaskRelationshipService {
 
         if(!sourceTask.getBoard().getProject().getId().equals(targetTask.getBoard().getProject().getId())){
             throw  new BadRequestException("Tasks must belong to the same project");
+        }
+
+        if (sourceTask.getTaskStatus() == TaskStatus.DONE ||
+                targetTask.getTaskStatus() == TaskStatus.DONE) {
+
+            throw new BadRequestException(
+                    "Completed tasks cannot be part of a blocker relationship");
         }
 
         User user = userRepository.findByEmail(authentication.getName())
@@ -65,6 +76,11 @@ public class TaskRelationshipService {
 
         if(taskRelationshipRepository.existsBySourceTaskAndTargetTask(sourceTask, targetTask)){
             throw  new ConflictException("This task relationship already exists");
+        }
+
+        if (wouldCreateCycle(sourceTask, targetTask)) {
+            throw new BadRequestException(
+                    "This relationship would create a blocker cycle");
         }
 
         TaskRelationship relationship = new TaskRelationship();
@@ -180,5 +196,36 @@ public class TaskRelationshipService {
                                 "You are not a member of this project"));
 
         return task;
+    }
+
+    private boolean wouldCreateCycle(
+            Task sourceTask,
+            Task targetTask) {
+
+        Set<UUID> visited = new HashSet<>();
+        ArrayDeque<Task> stack = new ArrayDeque<>();
+
+        stack.push(targetTask);
+
+        while (!stack.isEmpty()) {
+
+            Task current = stack.pop();
+
+            if (!visited.add(current.getId())) {
+                continue;
+            }
+
+            if (current.getId().equals(sourceTask.getId())) {
+                return true;
+            }
+
+            for (TaskRelationship relationship :
+                    taskRelationshipRepository.findBySourceTask(current)) {
+
+                stack.push(relationship.getTargetTask());
+            }
+        }
+
+        return false;
     }
 }

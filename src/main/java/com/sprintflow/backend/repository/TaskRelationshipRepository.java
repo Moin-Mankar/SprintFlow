@@ -28,4 +28,8 @@ public interface TaskRelationshipRepository extends JpaRepository<TaskRelationsh
         AND r.sourceTask.taskStatus <> com.sprintflow.backend.enums.TaskStatus.DONE
         """)
     long countBlockedTasksByProject(UUID projectId);
+
+    void deleteBySourceTask(Task task);
+
+    void deleteByTargetTask(Task task);
 }
