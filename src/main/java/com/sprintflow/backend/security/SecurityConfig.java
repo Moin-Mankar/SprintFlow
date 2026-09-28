@@ -1,7 +1,5 @@
-package com.sprintflow.backend.config;
+package com.sprintflow.backend.security;
 
-import com.sprintflow.backend.security.JwtAuthenticationFilter;
-import com.sprintflow.backend.security.OAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +29,8 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
 
+                .cors(cors -> {})
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.IF_REQUIRED
@@ -53,7 +53,6 @@ public class SecurityConfig {
 
                 .exceptionHandling(exception -> exception
 
-                        // 401 - User is not authenticated
                         .authenticationEntryPoint(
                                 (request, response, authException) -> {
                                     response.sendError(
@@ -63,7 +62,6 @@ public class SecurityConfig {
                                 }
                         )
 
-                        // 403 - User is authenticated but not allowed
                         .accessDeniedHandler(
                                 (request, response, accessDeniedException) -> {
                                     response.sendError(

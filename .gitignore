@@ -45,6 +45,6 @@ application-local.properties
 
 *.log
 
-Dockerfile
-
 .dockerignore
+
+docker.env
