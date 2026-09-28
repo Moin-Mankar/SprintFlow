@@ -13,13 +13,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-
+import org.springframework.beans.factory.annotation.Value;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.UUID;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
+
+    @Value("${FRONTEND_URL}")
+    private String frontendUrl;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -77,9 +82,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             session.invalidate();
         }
 
-        response.setContentType("application/json");
-        response.getWriter().write(
-                "{\"token\":\"" + token + "\"}"
-        );
+        String redirectUrl = frontendUrl + "/oauth2/callback#token=" +
+                URLEncoder.encode(token, StandardCharsets.UTF_8);
+
+        response.sendRedirect(redirectUrl);
     }
 }
