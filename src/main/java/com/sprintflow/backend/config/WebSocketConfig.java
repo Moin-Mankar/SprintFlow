@@ -26,6 +26,9 @@ public class WebSocketConfig
             StompEndpointRegistry registry) {
 
         registry
-                .addEndpoint("/ws");
+                .addEndpoint("/ws")
+                .setAllowedOriginPatterns(
+                        "https://sprintflow-frontend-ol1g.onrender.com"
+                );
     }
 }
